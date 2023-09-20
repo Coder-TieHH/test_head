@@ -1,0 +1,25 @@
+{
+    "version": "0.2.0",
+    "configurations": [         // 是一个数组，包含了多个配置项。
+        {
+            "name": "C/C++: g++ 生成活动文件",      // 表示该配置的名称。
+            "type": "cppdbg",       // 表示调试器类型，这里为 cppdbg。
+            "request": "launch",        // "request" 表示请求类型，这里为 launch。
+            "program": "${workspaceFolder}/build/test_head",  // 表示要调试的可执行文件路径，这里为 ${workspaceFolder}/bin/kcf_debug。
+            "args": [],     //  表示传递给程序的启动参数列表，这里为空。
+            "stopAtEntry": false,       //  表示程序是否在入口处停止，这里为 false。
+            "cwd": "${workspaceFolder}",        // 表示程序运行所在的工作目录，这里为 ${workspaceFolder}。
+            "environment": [],      // 表示环境变量列表，这里为空。
+            "externalConsole": false,   //  表示是否使用外部控制台窗口，这里为 false。
+            "MIMode": "gdb",        // 表示选择使用的调试器模式，这里为 gdb。
+            "setupCommands": [
+                {
+                    "description": "为 gdb 启用整齐打印",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "build"  // 表示在启动调试器之前要执行的任务，这里为 build，即在 tasks.json 文件中定义的编译任务。
+        }
+    ]
+}
