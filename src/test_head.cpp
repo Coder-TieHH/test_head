@@ -19,10 +19,10 @@ graph_t graph_head;
 
 int main()
 {
-      std::string head_model = "/home/rpdzkj/Desktop/test_head/models/nanotrackv2_head1_uint8.tmfile";
+      std::string head_model = "/home/rpdzkj/Desktop/test_head/models/nanotrackv2_head1.tmfile";
       opt.num_thread = 1;
       opt.cluster = TENGINE_CLUSTER_ALL;
-      opt.precision = TENGINE_MODE_UINT8;
+      opt.precision = TENGINE_MODE_FP32;
       opt.affinity = 0;
       /* inital tengine */
       if (init_tengine() != 0)
@@ -33,28 +33,28 @@ int main()
       fprintf(stderr, "tengine-lite library version: %s\n", get_tengine_version());
 
       /* create VeriSilicon TIM-VX backend */
-      context_t timvx_context = create_context("timvx", 1);
-      int rtt = set_context_device(timvx_context, "TIMVX", nullptr, 0);
-      if (0 > rtt)
+      // context_t timvx_context = create_context("timvx", 1);
+      // int rtt = set_context_device(timvx_context, "TIMVX", nullptr, 0);
+      // if (0 > rtt)
+      // {
+      //       fprintf(stderr, " add_context_device VSI DEVICE failed.\n");
+      //       return -1;
+      // }
+      // graph_head = create_graph(timvx_context, "tengine", head_model.c_str());
+
+      graph_t graph_head = create_graph(NULL, "tengine", head_model.c_str());
+      if (graph_head == nullptr)
       {
-            fprintf(stderr, " add_context_device VSI DEVICE failed.\n");
+            fprintf(stderr, "Create graph failed.\n");
             return -1;
       }
 
-      graph_head = create_graph(timvx_context, "tengine", head_model.c_str());
-      // graph_t graph_head = create_graph(NULL, "tengine", head_model.c_str());
-      // if (graph_head == nullptr)
-      // {
-      //       fprintf(stderr, "Create graph failed.\n");
-      //       return -1;
-      // }
-
-      cv::Mat image = cv::imread("/home/rpdzkj/Desktop/test_head/image/test_256_20.jpg");
-      cv::cvtColor(image, image, cv::COLOR_BGR2RGB);
-      // char* image_file = "/home/rpdzkj/Desktop/test_head/image/test2.jpg";
+      // cv::Mat image = cv::imread("/home/rpdzkj/Desktop/test_head/image/test_256_20.jpg");
+      // cv::cvtColor(image, image, cv::COLOR_BGR2RGB);
+      char *image_file = "/home/rpdzkj/Desktop/test_head/image/test_256_20.jpg";
       int image_size = 256 * 20 * 3;
       int dims[] = {1, 3, 256, 20};
-      std::vector<uint8_t> input_data(image_size);
+      std::vector<float> input_data(image_size);
 
       tensor_t input_tensor = get_graph_input_tensor(graph_head, 0, 0);
       if (input_tensor == nullptr)
@@ -69,7 +69,7 @@ int main()
       }
       // 具体来说，它首先调用 set_tensor_buffer 函数，该函数接受三个参数：要设置的张量、数据缓冲区的指针和缓冲区大小。
       // 通过调用该函数，可以将输入数据 input_data 的内容复制到指定的 input_tensor 张量中。
-      if (set_tensor_buffer(input_tensor, input_data.data(), image_size * sizeof(uint8_t)) < 0)
+      if (set_tensor_buffer(input_tensor, input_data.data(), image_size * sizeof(float)) < 0)
       {
             fprintf(stderr, "Set input tensor buffer failed\n");
             return -1;
@@ -81,32 +81,31 @@ int main()
             fprintf(stderr, "Prerun multithread graph failed.\n");
             return -1;
       }
+
       /* prepare process input data, set the data mem to input tensor */
-      get_tensor_quant_param(input_tensor, &input_scale, &input_zero_point, 1);
+      // get_tensor_quant_param(input_tensor, &input_scale, &input_zero_point, 1);
       // nhwc -> nchw
-      for (int h = 0; h < image.rows; h++)
-      {
-            for (int w = 0; w < image.cols; w++)
-            {
-                  for (int c = 0; c < 3; c++)
-                  {
-                        int in_index = h * image.cols * 3 + w * 3 + c;
-                        int out_index = c * image.rows * image.cols + h * image.cols + w;
-                        float input_fp32 = (image.data[in_index] - mean[c]) * scale[c];
+      // for (int h = 0; h < image.rows; h++)
+      // {
+      //       for (int w = 0; w < image.cols; w++)
+      //       {
+      //             for (int c = 0; c < 3; c++)
+      //             {
+      //                   int in_index = h * image.cols * 3 + w * 3 + c;
+      //                   int out_index = c * image.rows * image.cols + h * image.cols + w;
+      //                   float input_fp32 = (image.data[in_index] - mean[c]) * scale[c];
+      //                   /* quant to uint8 */
+      //                   int udata = (round)(input_fp32 / input_scale + (float)input_zero_point);
+      //                   if (udata > 255)
+      //                         udata = 255;
+      //                   else if (udata < 0)
+      //                         udata = 0;
+      //                   input_data[out_index] = udata;
+      //             }
+      //       }
+      // }
 
-                        /* quant to uint8 */
-                        int udata = (round)(input_fp32 / input_scale + (float)input_zero_point);
-                        if (udata > 255)
-                              udata = 255;
-                        else if (udata < 0)
-                              udata = 0;
-
-                        input_data[out_index] = udata;
-                  }
-            }
-      }
-
-      // get_input_data(image_file, input_data, 256, 40, mean, scale);
+      get_input_data(image_file, input_data.data(), 256, 20, mean, scale);
       if (run_graph(graph_head, 1) < 0)
       {
             fprintf(stderr, "Run graph failed\n");
@@ -136,6 +135,6 @@ int main()
 
       postrun_graph(graph_head);
       destroy_graph(graph_head);
-      destroy_context(timvx_context);
+      // destroy_context(timvx_context);
       release_tengine();
 }
