@@ -19,7 +19,7 @@ graph_t graph_head;
 
 int main()
 {
-      std::string head_model = "/home/rpdzkj/Desktop/test_head/models/head_sim_uint8.tmfile";
+      std::string head_model = "/home/rpdzkj/Desktop/test_head/models/nanotrackv2_head1_uint8.tmfile";
       opt.num_thread = 1;
       opt.cluster = TENGINE_CLUSTER_ALL;
       opt.precision = TENGINE_MODE_UINT8;
@@ -49,11 +49,12 @@ int main()
       //       return -1;
       // }
 
-      cv::Mat image = cv::imread("/home/rpdzkj/Desktop/test_head/image/test.jpg");
+      cv::Mat image = cv::imread("/home/rpdzkj/Desktop/test_head/image/test_256_20.jpg");
+      cv::cvtColor(image, image, cv::COLOR_BGR2RGB);
       // char* image_file = "/home/rpdzkj/Desktop/test_head/image/test2.jpg";
-      int image_size = 256 * 40 * 3;
-      int dims[] = {1, 3, 256, 40};
-      float *input_data = (float *)malloc(image_size * sizeof(float));
+      int image_size = 256 * 20 * 3;
+      int dims[] = {1, 3, 256, 20};
+      std::vector<uint8_t> input_data(image_size);
 
       tensor_t input_tensor = get_graph_input_tensor(graph_head, 0, 0);
       if (input_tensor == nullptr)
@@ -68,7 +69,7 @@ int main()
       }
       // 具体来说，它首先调用 set_tensor_buffer 函数，该函数接受三个参数：要设置的张量、数据缓冲区的指针和缓冲区大小。
       // 通过调用该函数，可以将输入数据 input_data 的内容复制到指定的 input_tensor 张量中。
-      if (set_tensor_buffer(input_tensor, input_data, image_size * sizeof(uint8_t)) < 0)
+      if (set_tensor_buffer(input_tensor, input_data.data(), image_size * sizeof(uint8_t)) < 0)
       {
             fprintf(stderr, "Set input tensor buffer failed\n");
             return -1;
@@ -133,8 +134,8 @@ int main()
             loc_data[c] = (float)(*(loc_data_u8 + c));
       }
 
-      free(input_data);
       postrun_graph(graph_head);
       destroy_graph(graph_head);
+      destroy_context(timvx_context);
       release_tengine();
 }
